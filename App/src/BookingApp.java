@@ -1,5 +1,8 @@
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Scanner;
 
 // Abstract Room Class
 abstract class Room {
@@ -79,79 +82,104 @@ class SuiteRoom extends Room {
     }
 }
 
-// Centralized Inventory Class (NEW - v3.0 concept)
+// Centralized Inventory Class
 class RoomInventory {
     private HashMap<String, Integer> inventory;
 
-    // Constructor initializes inventory
     public RoomInventory() {
         inventory = new HashMap<>();
     }
 
-    // Add or initialize room type
     public void addRoom(String roomType, int count) {
         inventory.put(roomType, count);
     }
 
-    // Get availability
     public int getAvailability(String roomType) {
         return inventory.getOrDefault(roomType, 0);
     }
 
-    // Update availability (increment/decrement)
     public void updateAvailability(String roomType, int change) {
         int current = getAvailability(roomType);
         inventory.put(roomType, current + change);
     }
 
-    // Display full inventory
-    public void displayInventory() {
-        System.out.println("\n===== CURRENT ROOM INVENTORY =====");
-        for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
-            System.out.println(entry.getKey() + " Available: " + entry.getValue());
-        }
+    public Map<String, Integer> getInventorySnapshot() {
+        return new HashMap<>(inventory);
     }
 }
 
-// Main Class (v3.1 Refactored)
+// Read-only search service with interactive input
+class RoomSearchService {
+
+    private RoomInventory inventory;
+    private List<Room> rooms;
+
+    public RoomSearchService(RoomInventory inventory, List<Room> rooms) {
+        this.inventory = inventory;
+        this.rooms = rooms;
+    }
+
+    public void interactiveSearch() {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("Welcome to the Room Search. Type 'exit' to quit.\n");
+
+        while (true) {
+            System.out.print("Enter room type (Single Room, Double Room, Suite Room) to search: ");
+            String input = scanner.nextLine().trim();
+
+            if (input.equalsIgnoreCase("exit")) {
+                System.out.println("Exiting application.");
+                break;
+            }
+
+            int availability = inventory.getAvailability(input);
+
+            if (availability > 0) {
+                boolean found = false;
+                for (Room room : rooms) {
+                    if (room.getRoomType().equalsIgnoreCase(input)) {
+                        room.displayRoomDetails();
+                        System.out.println("Available: " + availability);
+                        System.out.println("-----------------------------------");
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    System.out.println("Room type '" + input + "' not recognized in system.");
+                }
+            } else {
+                System.out.println("Room type '" + input + "' is not available or does not exist.");
+            }
+        }
+
+        scanner.close();
+    }
+}
+
+// Main Class
 public class BookingApp {
 
     public static void main(String[] args) {
 
-        // Room objects (domain model)
-        Room singleRoom = new SingleRoom();
-        Room doubleRoom = new DoubleRoom();
-        Room suiteRoom = new SuiteRoom();
+        // Initialize rooms
+        List<Room> rooms = new ArrayList<>();
+        rooms.add(new SingleRoom());
+        rooms.add(new DoubleRoom());
+        rooms.add(new SuiteRoom());
 
-        // Initialize centralized inventory
+        // Initialize inventory with some availability
         RoomInventory inventory = new RoomInventory();
+        inventory.addRoom("Single Room", 5);
+        inventory.addRoom("Double Room", 3);
+        inventory.addRoom("Suite Room", 0); // Suites currently unavailable
 
-        // Register room availability
-        inventory.addRoom(singleRoom.getRoomType(), 5);
-        inventory.addRoom(doubleRoom.getRoomType(), 3);
-        inventory.addRoom(suiteRoom.getRoomType(), 2);
+        // Initialize search service
+        RoomSearchService searchService = new RoomSearchService(inventory, rooms);
 
-        // Display room details
-        System.out.println("===== ROOM DETAILS =====\n");
-
-        singleRoom.displayRoomDetails();
-        System.out.println("-----------------------------------");
-
-        doubleRoom.displayRoomDetails();
-        System.out.println("-----------------------------------");
-
-        suiteRoom.displayRoomDetails();
-        System.out.println("-----------------------------------");
-
-        // Display inventory
-        inventory.displayInventory();
-
-        // Example update
-        System.out.println("\nUpdating inventory (1 Single Room booked)...");
-        inventory.updateAvailability("Single Room", -1);
-
-        // Display updated inventory
-        inventory.displayInventory();
+        // Start interactive search loop
+        searchService.interactiveSearch();
 
         System.out.println("\nApplication Terminated.");
     }
